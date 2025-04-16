@@ -1,11 +1,13 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline for MySQL
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     services:
       mysql:
         image: mysql:8.0
@@ -14,26 +16,34 @@ jobs:
           MYSQL_DATABASE: project_db
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v2
 
-    - name: Wait for MySQL to be ready
-      run: sleep 30
+      - name: Wait for MySQL to initialize
+        run: sleep 30
 
-    - name: Run SQL Scripts
-      run: |
-        mysql -h 127.0.0.1 -u root -pRambo@123 < sql/01_create_climate_table.sql
-        mysql -h 127.0.0.1 -u root -pRambo@123 < sql/02_add_humidity_column.sql
-        mysql -h 127.0.0.1 -u root -pRambo@123 < sql/03_seed_data.sql
+      - name: Create ClimateData table
+        run: mysql -h 127.0.0.1 -u root -pRambo@123 < sql/01_create_climate_table.sql
 
-    - name: Install Python & Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y python3-pip
-        pip3 install mysql-connector-python
+      - name: Add humidity column
+        run: mysql -h 127.0.0.1 -u root -pRambo@123 < sql/02_add_humidity_column.sql
 
-    - name: Run Python Queries
-      run: python3 scripts/multi_thread_queries.py
+      - name: Seed sample climate data
+        run: mysql -h 127.0.0.1 -u root -pRambo@123 < sql/03_seed_data.sql
+
+      - name: Install Python and Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          pip3 install mysql-connector-python
+
+      - name: Run Concurrent Queries
+        run: python3 scripts/multi_thread_queries.py
+
